@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  appointments      Appointment[]
+  pushSubscriptions PushSubscription[]
+  settings          UserSettings?
+
+  @@map("users")
+}
+
+model Client {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  instagram String?
+  notes     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  appointments    Appointment[]
+  serviceHistory  ServiceHistory[]
+
+  @@map("clients")
+}
+
+model Service {
+  id              String   @id @default(uuid())
+  name            String
+  priceCents      Int      @map("price_cents")
+  durationMinutes Int      @map("duration_minutes")
+  color           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  appointments    Appointment[]
+  serviceHistory  ServiceHistory[]
+
+  @@map("services")
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  name          String
+  brand         String?
+  color         String?
+  qty           Int
+  lowStockLimit Int      @map("low_stock_limit")
+  priceCents    Int?     @map("price_cents")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  stockMoves StockMove[]
+
+  @@map("products")
+}
+
+model StockMove {
+  id        String   @id @default(uuid())
+  productId String   @map("product_id")
+  delta     Int
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("stock_moves")
+}
+
+enum AppointmentStatus {
+  PENDENTE
+  CONCLUIDO
+  ANTECIPADO
+}
+
+model Appointment {
+  id        String            @id @default(uuid())
+  userId    String?           @map("user_id")
+  clientId  String            @map("client_id")
+  serviceId String            @map("service_id")
+  startTime DateTime          @map("start_time")
+  endTime   DateTime          @map("end_time")
+  status    AppointmentStatus @default(PENDENTE)
+  notes     String?
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  client  Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@index([startTime])
+  @@index([status])
+  @@map("appointments")
+}
+
+model ServiceHistory {
+  id        String   @id @default(uuid())
+  clientId  String   @map("client_id")
+  serviceId String   @map("service_id")
+  date      DateTime
+  priceCents Int     @map("price_cents")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  client  Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([date])
+  @@map("service_history")
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
+}
+
+enum Theme {
+  light
+  dark
+  system
+}
+
+model UserSettings {
+  userId   String  @id @map("user_id")
+  notif24h Boolean @default(true) @map("notif_24h")
+  notif3h  Boolean @default(true) @map("notif_3h")
+  notif1h  Boolean @default(true) @map("notif_1h")
+  theme    Theme   @default(system)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
