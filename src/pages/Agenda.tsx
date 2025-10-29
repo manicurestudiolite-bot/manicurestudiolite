@@ -127,24 +127,23 @@ const Agenda = () => {
   };
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-soft">
-            <Calendar className="w-5 h-5 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold">Agenda</h1>
+    <div className="p-4 space-y-4 pb-20">
+      {/* Floating Action Button */}
+      <Button
+        size="icon"
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50"
+        onClick={() => {
+          setSelectedAppointment(undefined);
+          setDialogOpen(true);
+        }}
+      >
+        <Plus className="w-6 h-6" />
+      </Button>
+      <div className="flex items-center gap-2">
+        <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-soft">
+          <Calendar className="w-5 h-5 text-white" />
         </div>
-        <Button
-          size="icon"
-          className="rounded-full shadow-soft"
-          onClick={() => {
-            setSelectedAppointment(undefined);
-            setDialogOpen(true);
-          }}
-        >
-          <Plus className="w-5 h-5" />
-        </Button>
+        <h1 className="text-2xl font-bold">Agenda</h1>
       </div>
 
       <div className="grid grid-cols-7 gap-2">

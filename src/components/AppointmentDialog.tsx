@@ -27,6 +27,8 @@ export const AppointmentDialog = ({ open, onOpenChange, appointment, onSave, def
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [notes, setNotes] = useState('');
+  const [price, setPrice] = useState('');
+  const [paidAmount, setPaidAmount] = useState('0');
 
   useEffect(() => {
     if (open) {
@@ -40,6 +42,8 @@ export const AppointmentDialog = ({ open, onOpenChange, appointment, onSave, def
         setDate(format(start, 'yyyy-MM-dd'));
         setTime(format(start, 'HH:mm'));
         setNotes(appointment.notes || '');
+        setPrice(appointment.price?.toString() || '');
+        setPaidAmount(appointment.paidAmount?.toString() || '0');
       } else {
         const dateToUse = defaultDate || new Date();
         setDate(format(dateToUse, 'yyyy-MM-dd'));
@@ -47,6 +51,8 @@ export const AppointmentDialog = ({ open, onOpenChange, appointment, onSave, def
         setClientId('');
         setServiceId('');
         setNotes('');
+        setPrice('');
+        setPaidAmount('0');
       }
     }
   }, [appointment, open, defaultDate]);
@@ -75,12 +81,20 @@ export const AppointmentDialog = ({ open, onOpenChange, appointment, onSave, def
 
     try {
       const startTime = new Date(`${date}T${time}`).toISOString();
+      const payload: any = { 
+        clientId, 
+        serviceId, 
+        startTime, 
+        notes,
+        price: price ? parseFloat(price) : undefined,
+        paidAmount: paidAmount ? parseFloat(paidAmount) : 0
+      };
 
       if (appointment) {
-        await api.appointments.update(appointment.id, { clientId, serviceId, startTime, notes });
+        await api.appointments.update(appointment.id, payload);
         toast.success('Agendamento atualizado com sucesso!');
       } else {
-        await api.appointments.create({ clientId, serviceId, startTime, notes });
+        await api.appointments.create(payload);
         toast.success('Agendamento criado com sucesso!');
       }
       onSave();
@@ -152,6 +166,34 @@ export const AppointmentDialog = ({ open, onOpenChange, appointment, onSave, def
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
                 required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="price">Preço (R$)</Label>
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                min="0"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="Preço do serviço"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="paidAmount">Valor Pago (R$)</Label>
+              <Input
+                id="paidAmount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={paidAmount}
+                onChange={(e) => setPaidAmount(e.target.value)}
+                placeholder="0.00"
               />
             </div>
           </div>
