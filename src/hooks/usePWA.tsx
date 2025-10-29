@@ -11,14 +11,6 @@ export const usePWA = () => {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // Register service worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then(() => console.log('Service Worker registrado'))
-        .catch((err) => console.error('Erro ao registrar Service Worker:', err));
-    }
-
     // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
