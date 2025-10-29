@@ -43,7 +43,7 @@ export interface StockMove {
   createdAt: string;
 }
 
-export type AppointmentStatus = 'PENDENTE' | 'CONCLUIDO' | 'ANTECIPADO';
+export type AppointmentStatus = 'PENDENTE' | 'PREPAGO' | 'CONCLUIDO' | 'CANCELADO' | 'FALTOU';
 
 export interface Appointment {
   id: string;
@@ -53,9 +53,22 @@ export interface Appointment {
   startTime: string;
   endTime: string;
   status: AppointmentStatus;
+  price?: number;
+  paidAmount?: number;
   notes?: string;
   client?: Client;
   service?: Service;
+}
+
+export interface Notification {
+  id: string;
+  appointmentId: string;
+  type: 'reminder' | 'status_change';
+  channel: 'push' | 'email' | 'whatsapp';
+  scheduledAt?: string;
+  sentAt?: string;
+  payload?: any;
+  createdAt: string;
 }
 
 export interface ServiceHistory {

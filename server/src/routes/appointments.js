@@ -5,9 +5,9 @@ export default async function appointmentRoutes(fastify) {
 
   fastify.addHook('preHandler', authenticate);
 
-  // List appointments (with optional date filter)
+  // List appointments (with optional filters)
   fastify.get('/', async (request) => {
-    const { startDate, endDate } = request.query;
+    const { startDate, endDate, status } = request.query;
 
     const where = {};
     if (startDate && endDate) {
@@ -15,6 +15,9 @@ export default async function appointmentRoutes(fastify) {
         gte: new Date(startDate),
         lte: new Date(endDate),
       };
+    }
+    if (status) {
+      where.status = status;
     }
 
     const appointments = await prisma.appointment.findMany({
@@ -31,7 +34,7 @@ export default async function appointmentRoutes(fastify) {
 
   // Create appointment
   fastify.post('/', async (request, reply) => {
-    const { clientId, serviceId, startTime, notes } = request.body;
+    const { clientId, serviceId, startTime, price, paidAmount, notes } = request.body;
 
     if (!clientId || !serviceId || !startTime) {
       return reply.code(400).send({ error: 'Dados inválidos' });
@@ -52,6 +55,8 @@ export default async function appointmentRoutes(fastify) {
         serviceId,
         startTime: start,
         endTime,
+        price: price || service.priceCents / 100,
+        paidAmount: paidAmount || 0,
         notes,
       },
       include: {
@@ -66,26 +71,30 @@ export default async function appointmentRoutes(fastify) {
   // Update appointment
   fastify.put('/:id', async (request, reply) => {
     const { id } = request.params;
-    const { clientId, serviceId, startTime, notes } = request.body;
+    const { clientId, serviceId, startTime, price, paidAmount, notes } = request.body;
 
-    let endTime;
+    const updateData = {};
+    
+    if (clientId) updateData.clientId = clientId;
+    if (notes !== undefined) updateData.notes = notes;
+    if (price !== undefined) updateData.price = price;
+    if (paidAmount !== undefined) updateData.paidAmount = paidAmount;
+
     if (serviceId) {
+      updateData.serviceId = serviceId;
       const service = await prisma.service.findUnique({ where: { id: serviceId } });
       if (service && startTime) {
         const start = new Date(startTime);
-        endTime = new Date(start.getTime() + service.durationMinutes * 60000);
+        updateData.startTime = start;
+        updateData.endTime = new Date(start.getTime() + service.durationMinutes * 60000);
       }
+    } else if (startTime) {
+      updateData.startTime = new Date(startTime);
     }
 
     const appointment = await prisma.appointment.update({
       where: { id },
-      data: {
-        clientId,
-        serviceId,
-        startTime: startTime ? new Date(startTime) : undefined,
-        endTime,
-        notes,
-      },
+      data: updateData,
       include: {
         client: true,
         service: true,
@@ -100,7 +109,7 @@ export default async function appointmentRoutes(fastify) {
     const { id } = request.params;
     const { status } = request.body;
 
-    if (!['PENDENTE', 'CONCLUIDO', 'ANTECIPADO'].includes(status)) {
+    if (!['PENDENTE', 'PREPAGO', 'CONCLUIDO', 'CANCELADO', 'FALTOU'].includes(status)) {
       return reply.code(400).send({ error: 'Status inválido' });
     }
 
@@ -110,6 +119,16 @@ export default async function appointmentRoutes(fastify) {
       include: {
         client: true,
         service: true,
+      },
+    });
+
+    // Create status change notification
+    await prisma.notification.create({
+      data: {
+        appointmentId: id,
+        type: 'status_change',
+        channel: 'push',
+        payload: { oldStatus: appointment.status, newStatus: status },
       },
     });
 

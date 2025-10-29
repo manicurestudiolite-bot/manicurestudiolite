@@ -47,12 +47,15 @@ const Dashboard = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, 'default' | 'secondary' | 'destructive'> = {
-      PENDENTE: 'default',
-      CONCLUIDO: 'secondary',
-      ANTECIPADO: 'destructive',
+    const statusMap: Record<string, { variant: 'default' | 'secondary' | 'destructive', label: string }> = {
+      PENDENTE: { variant: 'default', label: 'Pendente' },
+      PREPAGO: { variant: 'secondary', label: 'Pré-pago' },
+      CONCLUIDO: { variant: 'secondary', label: 'Concluído' },
+      CANCELADO: { variant: 'destructive', label: 'Cancelado' },
+      FALTOU: { variant: 'destructive', label: 'Faltou' },
     };
-    return <Badge variant={variants[status]}>{status}</Badge>;
+    const config = statusMap[status] || { variant: 'default', label: status };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   return (

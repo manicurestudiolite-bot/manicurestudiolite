@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { format, addDays, startOfWeek, addMinutes } from 'date-fns';
+import { format, addDays, startOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Plus, Edit, Trash2 } from 'lucide-react';
+import { Calendar, Plus, Edit, Trash2, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { openWhatsApp, getAppointmentMessage, isValidWhatsAppNumber } from '@/lib/whatsapp';
 
 const Agenda = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -91,13 +92,38 @@ const Agenda = () => {
     switch (status) {
       case 'PENDENTE':
         return 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20';
+      case 'PREPAGO':
+        return 'bg-blue-500/10 text-blue-600 border-blue-500/20';
       case 'CONCLUIDO':
         return 'bg-green-500/10 text-green-600 border-green-500/20';
-      case 'ANTECIPADO':
+      case 'CANCELADO':
+        return 'bg-gray-500/10 text-gray-600 border-gray-500/20';
+      case 'FALTOU':
         return 'bg-red-500/10 text-red-600 border-red-500/20';
       default:
         return 'bg-gray-500/10 text-gray-600 border-gray-500/20';
     }
+  };
+
+  const handleWhatsApp = (apt: Appointment) => {
+    if (!apt.client?.phone) {
+      toast.error('Cliente não possui telefone cadastrado');
+      return;
+    }
+
+    if (!isValidWhatsAppNumber(apt.client.phone)) {
+      toast.error('Número de telefone inválido');
+      return;
+    }
+
+    const message = getAppointmentMessage(
+      apt.client.name,
+      format(new Date(apt.startTime), "dd/MM/yyyy", { locale: ptBR }),
+      format(new Date(apt.startTime), "HH:mm", { locale: ptBR }),
+      apt.service?.name || 'Serviço'
+    );
+
+    openWhatsApp(apt.client.phone, message);
   };
 
   return (
@@ -192,6 +218,16 @@ const Agenda = () => {
                       )}
                     </div>
                     <div className="flex gap-2 shrink-0">
+                      {apt.client?.phone && isValidWhatsAppNumber(apt.client.phone) && (
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          onClick={() => handleWhatsApp(apt)}
+                          title="Enviar mensagem no WhatsApp"
+                        >
+                          <MessageCircle className="w-4 h-4 text-green-600" />
+                        </Button>
+                      )}
                       <Button size="icon" variant="ghost" onClick={() => handleEdit(apt)}>
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -219,8 +255,10 @@ const Agenda = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="PENDENTE">Pendente</SelectItem>
+                        <SelectItem value="PREPAGO">Pré-pago</SelectItem>
                         <SelectItem value="CONCLUIDO">Concluído</SelectItem>
-                        <SelectItem value="ANTECIPADO">Antecipado</SelectItem>
+                        <SelectItem value="CANCELADO">Cancelado</SelectItem>
+                        <SelectItem value="FALTOU">Faltou</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
