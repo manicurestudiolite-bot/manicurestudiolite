@@ -10,6 +10,7 @@ import { setupCron } from './services/cron.service.js';
 
 import authRoutes from './routes/auth.js';
 import clientRoutes from './routes/clients.js';
+import clientHistoryRoutes from './routes/client-history.js';
 import serviceRoutes from './routes/services.js';
 import productRoutes from './routes/products.js';
 import appointmentRoutes from './routes/appointments.js';
@@ -47,6 +48,7 @@ fastify.decorate('prisma', prisma);
 // API Routes
 fastify.register(authRoutes, { prefix: '/api/auth' });
 fastify.register(clientRoutes, { prefix: '/api/clients' });
+fastify.register(clientHistoryRoutes, { prefix: '/api/clients' });
 fastify.register(serviceRoutes, { prefix: '/api/services' });
 fastify.register(productRoutes, { prefix: '/api/products' });
 fastify.register(appointmentRoutes, { prefix: '/api/appointments' });

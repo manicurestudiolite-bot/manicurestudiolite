@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Bell, Palette, Download, Mail, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { usePWA } from '@/hooks/usePWA';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { getStoredTheme, setStoredTheme, Theme } from '@/lib/theme';
+import { api } from '@/lib/api';
+import { UserSettings } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -15,22 +18,43 @@ import { useNavigate } from 'react-router-dom';
 const Configuracoes = () => {
   const { user, logout } = useAuth();
   const { isInstallable, isInstalled, installPWA } = usePWA();
+  const { isSupported, isSubscribed, subscribe, unsubscribe } = usePushNotifications();
   const navigate = useNavigate();
   
-  const [notif24h, setNotif24h] = useState(true);
-  const [notif3h, setNotif3h] = useState(true);
-  const [notif1h, setNotif1h] = useState(true);
+  const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<Theme>(getStoredTheme());
 
   useEffect(() => {
-    // Load settings from API
-    // TODO: Replace with actual API call
+    loadSettings();
   }, []);
+
+  const loadSettings = async () => {
+    try {
+      const data = await api.settings.get();
+      setSettings(data.settings);
+      setTheme(data.settings.theme as Theme);
+    } catch (error) {
+      console.error('Erro ao carregar configurações:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateSetting = async (key: keyof UserSettings, value: boolean | string) => {
+    try {
+      const updated = await api.settings.update({ [key]: value });
+      setSettings(updated.settings);
+      toast.success('Configuração salva');
+    } catch (error) {
+      toast.error('Erro ao salvar configuração');
+    }
+  };
 
   const handleThemeChange = (value: Theme) => {
     setTheme(value);
     setStoredTheme(value);
-    toast.success('Tema atualizado');
+    updateSetting('theme', value);
   };
 
   const handleInstall = async () => {
@@ -40,11 +64,27 @@ const Configuracoes = () => {
     }
   };
 
+  const handlePushToggle = async () => {
+    if (isSubscribed) {
+      await unsubscribe();
+    } else {
+      await subscribe();
+    }
+  };
+
   const handleLogout = async () => {
     await logout();
     toast.success('Logout realizado');
     navigate('/auth');
   };
+
+  if (loading || !settings) {
+    return (
+      <div className="p-4 flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando configurações...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 space-y-4 pb-20">
@@ -59,35 +99,53 @@ const Configuracoes = () => {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Bell className="w-4 h-4" />
-            Notificações
+            Notificações Push
           </CardTitle>
-          <CardDescription>Configure os lembretes de agendamentos</CardDescription>
+          <CardDescription>
+            {isSupported
+              ? 'Ative as notificações para receber lembretes'
+              : 'Seu navegador não suporta notificações push'}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="notif-24h">Lembrete 24 horas antes</Label>
-            <Switch
-              id="notif-24h"
-              checked={notif24h}
-              onCheckedChange={setNotif24h}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="notif-3h">Lembrete 3 horas antes</Label>
-            <Switch
-              id="notif-3h"
-              checked={notif3h}
-              onCheckedChange={setNotif3h}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="notif-1h">Lembrete 1 hora antes</Label>
-            <Switch
-              id="notif-1h"
-              checked={notif1h}
-              onCheckedChange={setNotif1h}
-            />
-          </div>
+          {isSupported && (
+            <Button
+              onClick={handlePushToggle}
+              variant={isSubscribed ? 'outline' : 'default'}
+              className="w-full"
+            >
+              {isSubscribed ? 'Desativar Notificações' : 'Ativar Notificações'}
+            </Button>
+          )}
+
+          {isSubscribed && (
+            <>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="notif-24h">Lembrete 24 horas antes</Label>
+                <Switch
+                  id="notif-24h"
+                  checked={settings.notif24h}
+                  onCheckedChange={(checked) => updateSetting('notif24h', checked)}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="notif-3h">Lembrete 3 horas antes</Label>
+                <Switch
+                  id="notif-3h"
+                  checked={settings.notif3h}
+                  onCheckedChange={(checked) => updateSetting('notif3h', checked)}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="notif-1h">Lembrete 1 hora antes</Label>
+                <Switch
+                  id="notif-1h"
+                  checked={settings.notif1h}
+                  onCheckedChange={(checked) => updateSetting('notif1h', checked)}
+                />
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
