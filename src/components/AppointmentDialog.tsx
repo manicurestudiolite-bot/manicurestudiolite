@@ -5,23 +5,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Appointment, Client, Service } from '@/types';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
 import { format } from 'date-fns';
+import { useClients } from '@/lib/queries/clients';
+import { useServices } from '@/lib/queries/services';
+import { useCreateAppointment, useUpdateAppointment } from '@/lib/queries/appointments';
 
 interface AppointmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  appointment?: Appointment;
+  appointment?: any;
   onSave: () => void;
   defaultDate?: Date;
 }
 
 export const AppointmentDialog = ({ open, onOpenChange, appointment, onSave, defaultDate }: AppointmentDialogProps) => {
   const [loading, setLoading] = useState(false);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
+  const { data: clients = [] } = useClients();
+  const { data: services = [] } = useServices();
+  const createAppointment = useCreateAppointment();
+  const updateAppointment = useUpdateAppointment();
+
   const [clientId, setClientId] = useState('');
   const [serviceId, setServiceId] = useState('');
   const [date, setDate] = useState('');
@@ -32,18 +36,22 @@ export const AppointmentDialog = ({ open, onOpenChange, appointment, onSave, def
 
   useEffect(() => {
     if (open) {
-      loadClients();
-      loadServices();
-      
       if (appointment) {
-        setClientId(appointment.clientId);
-        setServiceId(appointment.serviceId);
-        const start = new Date(appointment.startTime);
+        // Map old fields to local state
+        // @ts-ignore
+        setClientId((appointment as any).clientId || (appointment as any).client_id || '');
+        // @ts-ignore
+        setServiceId((appointment as any).serviceId || (appointment as any).service_id || '');
+        // @ts-ignore
+        const start = new Date((appointment as any).startTime || (appointment as any).start_time);
         setDate(format(start, 'yyyy-MM-dd'));
         setTime(format(start, 'HH:mm'));
-        setNotes(appointment.notes || '');
-        setPrice(appointment.price?.toString() || '');
-        setPaidAmount(appointment.paidAmount?.toString() || '0');
+        // @ts-ignore
+        setNotes((appointment as any).notes || '');
+        // @ts-ignore
+        setPrice(((appointment as any).price ?? '')?.toString());
+        // @ts-ignore
+        setPaidAmount(((appointment as any).paidAmount ?? (appointment as any).paid_amount ?? 0).toString());
       } else {
         const dateToUse = defaultDate || new Date();
         setDate(format(dateToUse, 'yyyy-MM-dd'));
@@ -57,44 +65,32 @@ export const AppointmentDialog = ({ open, onOpenChange, appointment, onSave, def
     }
   }, [appointment, open, defaultDate]);
 
-  const loadClients = async () => {
-    try {
-      const data = await api.clients.list();
-      setClients(data.clients || []);
-    } catch (error: any) {
-      toast.error('Erro ao carregar clientes');
-    }
-  };
-
-  const loadServices = async () => {
-    try {
-      const data = await api.services.list();
-      setServices(data.services || []);
-    } catch (error: any) {
-      toast.error('Erro ao carregar serviços');
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const startTime = new Date(`${date}T${time}`).toISOString();
-      const payload: any = { 
-        clientId, 
-        serviceId, 
-        startTime, 
-        notes,
-        price: price ? parseFloat(price) : undefined,
-        paidAmount: paidAmount ? parseFloat(paidAmount) : 0
+      const start_time = new Date(`${date}T${time}`).toISOString();
+      const svc = services.find((s: any) => s.id === serviceId);
+      const duration = svc?.duration_minutes || 30;
+      const end_time = new Date(new Date(start_time).getTime() + duration * 60000).toISOString();
+
+      const base = {
+        client_id: clientId,
+        service_id: serviceId,
+        start_time,
+        end_time,
+        status: 'PENDENTE',
+        notes: notes || undefined,
+        price: price ? parseFloat(price) : null,
+        paid_amount: paidAmount ? parseFloat(paidAmount) : 0,
       };
 
-      if (appointment) {
-        await api.appointments.update(appointment.id, payload);
+      if (appointment?.id) {
+        await updateAppointment.mutateAsync({ id: appointment.id, ...base } as any);
         toast.success('Agendamento atualizado com sucesso!');
       } else {
-        await api.appointments.create(payload);
+        await createAppointment.mutateAsync(base as any);
         toast.success('Agendamento criado com sucesso!');
       }
       onSave();
@@ -139,7 +135,7 @@ export const AppointmentDialog = ({ open, onOpenChange, appointment, onSave, def
               <SelectContent>
                 {services.map((service) => (
                   <SelectItem key={service.id} value={service.id}>
-                    {service.name} - R$ {(service.priceCents / 100).toFixed(2)} ({service.durationMinutes}min)
+                    {service.name} - R$ {((service.price_cents || 0) / 100).toFixed(2)} ({service.duration_minutes}min)
                   </SelectItem>
                 ))}
               </SelectContent>

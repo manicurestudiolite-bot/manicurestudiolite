@@ -1,11 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Settings as SettingsIcon, Bell, Palette, Download, Mail, LogOut } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { usePWA } from '@/hooks/usePWA';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { getStoredTheme, setStoredTheme, Theme } from '@/lib/theme';
-import { api } from '@/lib/api';
-import { UserSettings } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -14,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { useSettings, useUpdateSettings } from '@/lib/queries/settings';
 
 const Configuracoes = () => {
   const { user, logout } = useAuth();
@@ -21,30 +20,15 @@ const Configuracoes = () => {
   const { isSupported, isSubscribed, subscribe, unsubscribe } = usePushNotifications();
   const navigate = useNavigate();
   
-  const [settings, setSettings] = useState<UserSettings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: settings, isLoading: loading } = useSettings();
+  const updateSettings = useUpdateSettings();
   const [theme, setTheme] = useState<Theme>(getStoredTheme());
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
 
-  const loadSettings = async () => {
+  const updateSetting = async (key: 'notif_24h' | 'notif_3h' | 'notif_1h' | 'theme', value: boolean | string) => {
     try {
-      const data = await api.settings.get();
-      setSettings(data.settings);
-      setTheme(data.settings.theme as Theme);
-    } catch (error) {
-      console.error('Erro ao carregar configurações:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateSetting = async (key: keyof UserSettings, value: boolean | string) => {
-    try {
-      const updated = await api.settings.update({ [key]: value });
-      setSettings(updated.settings);
+      await updateSettings.mutateAsync({ [key]: value } as any);
+      if (key === 'theme') setTheme(value as Theme);
       toast.success('Configuração salva');
     } catch (error) {
       toast.error('Erro ao salvar configuração');
@@ -118,30 +102,30 @@ const Configuracoes = () => {
             </Button>
           )}
 
-          {isSubscribed && (
+          {isSubscribed && settings && (
             <>
               <div className="flex items-center justify-between">
                 <Label htmlFor="notif-24h">Lembrete 24 horas antes</Label>
                 <Switch
                   id="notif-24h"
-                  checked={settings.notif24h}
-                  onCheckedChange={(checked) => updateSetting('notif24h', checked)}
+                  checked={!!settings.notif_24h}
+                  onCheckedChange={(checked) => updateSetting('notif_24h', checked)}
                 />
               </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="notif-3h">Lembrete 3 horas antes</Label>
                 <Switch
                   id="notif-3h"
-                  checked={settings.notif3h}
-                  onCheckedChange={(checked) => updateSetting('notif3h', checked)}
+                  checked={!!settings.notif_3h}
+                  onCheckedChange={(checked) => updateSetting('notif_3h', checked)}
                 />
               </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="notif-1h">Lembrete 1 hora antes</Label>
                 <Switch
                   id="notif-1h"
-                  checked={settings.notif1h}
-                  onCheckedChange={(checked) => updateSetting('notif1h', checked)}
+                  checked={!!settings.notif_1h}
+                  onCheckedChange={(checked) => updateSetting('notif_1h', checked)}
                 />
               </div>
             </>
@@ -158,7 +142,7 @@ const Configuracoes = () => {
           <CardDescription>Escolha o tema do aplicativo</CardDescription>
         </CardHeader>
         <CardContent>
-          <Select value={theme} onValueChange={handleThemeChange}>
+          <Select value={theme} onValueChange={(val: Theme) => updateSetting('theme', val)}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>

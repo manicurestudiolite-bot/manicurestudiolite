@@ -3,19 +3,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Product } from '@/types';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { useCreateProduct, useUpdateProduct } from '@/lib/queries/products';
 
 interface ProductDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  product?: Product;
+  product?: any;
   onSave: () => void;
 }
 
 export const ProductDialog = ({ open, onOpenChange, product, onSave }: ProductDialogProps) => {
   const [loading, setLoading] = useState(false);
+  const createProduct = useCreateProduct();
+  const updateProduct = useUpdateProduct();
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
   const [color, setColor] = useState('');
@@ -28,9 +29,10 @@ export const ProductDialog = ({ open, onOpenChange, product, onSave }: ProductDi
       setName(product.name);
       setBrand(product.brand || '');
       setColor(product.color || '');
-      setQty(product.qty.toString());
-      setLowStockLimit(product.lowStockLimit.toString());
-      setPrice(product.priceCents ? (product.priceCents / 100).toFixed(2) : '');
+      setQty(String(product.qty ?? 0));
+      setLowStockLimit(String(product.low_stock_limit ?? product.lowStockLimit ?? 5));
+      const pc = product.price_cents ?? product.priceCents;
+      setPrice(pc ? (pc / 100).toFixed(2) : '');
     } else {
       setName('');
       setBrand('');
@@ -46,20 +48,20 @@ export const ProductDialog = ({ open, onOpenChange, product, onSave }: ProductDi
     setLoading(true);
 
     try {
-      const data = {
+      const data: any = {
         name,
-        brand: brand || undefined,
-        color: color || undefined,
+        brand: brand || null,
+        color: color || null,
         qty: parseInt(qty),
-        lowStockLimit: parseInt(lowStockLimit),
-        priceCents: price ? Math.round(parseFloat(price) * 100) : undefined,
+        low_stock_limit: parseInt(lowStockLimit),
+        price_cents: price ? Math.round(parseFloat(price) * 100) : null,
       };
 
-      if (product) {
-        await api.products.update(product.id, data);
+      if (product?.id) {
+        await updateProduct.mutateAsync({ id: product.id, ...data });
         toast.success('Produto atualizado com sucesso!');
       } else {
-        await api.products.create(data);
+        await createProduct.mutateAsync(data);
         toast.success('Produto criado com sucesso!');
       }
       onSave();

@@ -4,28 +4,30 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Client, ServiceHistory } from '@/types';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useCreateClient, useUpdateClient, useClientHistory } from '@/lib/queries/clients';
 
 interface ClientDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  client?: Client;
+  client?: any;
   onSave: () => void;
 }
 
 export const ClientDialog = ({ open, onOpenChange, client, onSave }: ClientDialogProps) => {
   const [loading, setLoading] = useState(false);
+  const createClient = useCreateClient();
+  const updateClient = useUpdateClient();
+  const { data: history = [] } = useClientHistory(client?.id || '');
+
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [instagram, setInstagram] = useState('');
   const [notes, setNotes] = useState('');
-  const [history, setHistory] = useState<ServiceHistory[]>([]);
 
   useEffect(() => {
     if (client) {
@@ -33,35 +35,25 @@ export const ClientDialog = ({ open, onOpenChange, client, onSave }: ClientDialo
       setPhone(client.phone);
       setInstagram(client.instagram || '');
       setNotes(client.notes || '');
-      loadHistory(client.id);
     } else {
       setName('');
       setPhone('');
       setInstagram('');
       setNotes('');
-      setHistory([]);
     }
   }, [client, open]);
 
-  const loadHistory = async (clientId: string) => {
-    try {
-      const data = await api.clients.history(clientId);
-      setHistory(data.history || []);
-    } catch (error: any) {
-      console.error('Erro ao carregar histórico:', error);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      if (client) {
-        await api.clients.update(client.id, { name, phone, instagram, notes });
+      if (client?.id) {
+        await updateClient.mutateAsync({ id: client.id, name, phone, instagram, notes });
         toast.success('Cliente atualizado com sucesso!');
       } else {
-        await api.clients.create({ name, phone, instagram, notes });
+        await createClient.mutateAsync({ name, phone, instagram, notes } as any);
         toast.success('Cliente criado com sucesso!');
       }
       onSave();
@@ -161,7 +153,9 @@ export const ClientDialog = ({ open, onOpenChange, client, onSave }: ClientDialo
                             {format(new Date(item.date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                           </p>
                         </div>
-                        <span className="font-semibold text-primary">{formatCurrency(item.priceCents)}</span>
+                        <span className="font-semibold text-primary">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((item.price_cents || 0) / 100)}
+                        </span>
                       </div>
                     ))}
                   </div>

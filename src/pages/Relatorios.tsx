@@ -1,63 +1,49 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BarChart3, TrendingUp, Users as UsersIcon, Briefcase, Calendar } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { api } from '@/lib/api';
-import { Service, Client } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/utils';
+import { useRevenue, useTopClients, useTopServices } from '@/lib/queries/reports';
 
-interface TopService {
-  service: Service;
+interface TopServiceItem {
+  serviceId: string;
+  serviceName: string;
   count: number;
   totalCents: number;
 }
 
-interface TopClient {
-  client: Client;
+interface TopClientItem {
+  clientId: string;
+  clientName: string;
   count: number;
   totalCents: number;
 }
 
-interface Revenue {
-  totalCents: number;
-  count: number;
-}
 
 const Relatorios = () => {
   const { toast } = useToast();
   const [period, setPeriod] = useState<string>('month');
-  const [topServices, setTopServices] = useState<TopService[]>([]);
-  const [topClients, setTopClients] = useState<TopClient[]>([]);
-  const [revenue, setRevenue] = useState<Revenue>({ totalCents: 0, count: 0 });
-  const [loading, setLoading] = useState(true);
+
+  const { data: revenueRows = [], isLoading: loadingRevenue, error: revenueError } = useRevenue({ period });
+  const { data: topServices = [], isLoading: loadingServices, error: servicesError } = useTopServices();
+  const { data: topClients = [], isLoading: loadingClients, error: clientsError } = useTopClients();
 
   useEffect(() => {
-    loadReports();
-  }, [period]);
-
-  const loadReports = async () => {
-    try {
-      setLoading(true);
-      const [revenueData, servicesData, clientsData] = await Promise.all([
-        api.reports.revenue({ period }),
-        api.reports.topServices(),
-        api.reports.topClients(),
-      ]);
-
-      setRevenue(revenueData);
-      setTopServices(servicesData.topServices.slice(0, 5));
-      setTopClients(clientsData.topClients.slice(0, 3));
-    } catch (error) {
+    if (revenueError || servicesError || clientsError) {
       toast({
         title: 'Erro ao carregar relatórios',
-        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        description: 'Verifique sua conexão ou tente novamente.',
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [revenueError, servicesError, clientsError, toast]);
+
+  const revenue = useMemo(() => {
+    const totalCents = revenueRows.reduce((acc, r) => acc + r.totalCents, 0);
+    const count = revenueRows.reduce((acc, r) => acc + r.count, 0);
+    return { totalCents, count };
+  }, [revenueRows]);
 
   return (
     <div className="p-4 space-y-4">
@@ -90,7 +76,7 @@ const Relatorios = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {(loadingRevenue) ? (
               <p className="text-sm text-center py-4">Carregando...</p>
             ) : (
               <div className="space-y-2">
@@ -109,7 +95,7 @@ const Relatorios = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {loadingServices ? (
               <p className="text-sm text-muted-foreground text-center py-4">Carregando...</p>
             ) : topServices.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
@@ -117,12 +103,12 @@ const Relatorios = () => {
               </p>
             ) : (
               <div className="space-y-3">
-                {topServices.map((item, index) => (
-                  <div key={item.service.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                {topServices.slice(0, 5).map((item, index) => (
+                  <div key={item.serviceId} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-3">
                       <span className="text-lg font-bold text-muted-foreground">#{index + 1}</span>
                       <div>
-                        <p className="font-medium">{item.service.name}</p>
+                        <p className="font-medium">{item.serviceName}</p>
                         <p className="text-sm text-muted-foreground">{item.count}x realizados</p>
                       </div>
                     </div>
@@ -144,7 +130,7 @@ const Relatorios = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {loadingClients ? (
               <p className="text-sm text-muted-foreground text-center py-4">Carregando...</p>
             ) : topClients.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
@@ -152,12 +138,12 @@ const Relatorios = () => {
               </p>
             ) : (
               <div className="space-y-3">
-                {topClients.map((item, index) => (
-                  <div key={item.client.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                {topClients.slice(0, 3).map((item, index) => (
+                  <div key={item.clientId} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-3">
                       <span className="text-lg font-bold text-muted-foreground">#{index + 1}</span>
                       <div>
-                        <p className="font-medium">{item.client.name}</p>
+                        <p className="font-medium">{item.clientName}</p>
                         <p className="text-sm text-muted-foreground">{item.count} atendimentos</p>
                       </div>
                     </div>

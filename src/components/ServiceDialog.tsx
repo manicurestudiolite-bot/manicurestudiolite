@@ -3,19 +3,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Service } from '@/types';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { useCreateService, useUpdateService } from '@/lib/queries/services';
 
 interface ServiceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  service?: Service;
+  // Accept any shape; we map fields safely
+  service?: any;
   onSave: () => void;
 }
 
 export const ServiceDialog = ({ open, onOpenChange, service, onSave }: ServiceDialogProps) => {
   const [loading, setLoading] = useState(false);
+  const createService = useCreateService();
+  const updateService = useUpdateService();
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [duration, setDuration] = useState('');
@@ -24,8 +26,10 @@ export const ServiceDialog = ({ open, onOpenChange, service, onSave }: ServiceDi
   useEffect(() => {
     if (service) {
       setName(service.name);
-      setPrice((service.priceCents / 100).toFixed(2));
-      setDuration(service.durationMinutes.toString());
+      const p = (service.priceCents ?? service.price_cents ?? 0) as number;
+      const d = (service.durationMinutes ?? service.duration_minutes ?? 0) as number;
+      setPrice((p / 100).toFixed(2));
+      setDuration(d.toString());
       setColor(service.color || '#e91e63');
     } else {
       setName('');
@@ -40,14 +44,14 @@ export const ServiceDialog = ({ open, onOpenChange, service, onSave }: ServiceDi
     setLoading(true);
 
     try {
-      const priceCents = Math.round(parseFloat(price) * 100);
-      const durationMinutes = parseInt(duration);
+      const price_cents = Math.round(parseFloat(price) * 100);
+      const duration_minutes = parseInt(duration);
 
-      if (service) {
-        await api.services.update(service.id, { name, priceCents, durationMinutes, color });
+      if (service?.id) {
+        await updateService.mutateAsync({ id: service.id, name, price_cents, duration_minutes, color });
         toast.success('Serviço atualizado com sucesso!');
       } else {
-        await api.services.create({ name, priceCents, durationMinutes, color });
+        await createService.mutateAsync({ name, price_cents, duration_minutes, color } as any);
         toast.success('Serviço criado com sucesso!');
       }
       onSave();

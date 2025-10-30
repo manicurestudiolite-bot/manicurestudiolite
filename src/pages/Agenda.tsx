@@ -6,59 +6,29 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AppointmentDialog } from '@/components/AppointmentDialog';
-import { Appointment } from '@/types';
-import { api } from '@/lib/api';
 import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { openWhatsApp, getAppointmentMessage, isValidWhatsAppNumber } from '@/lib/whatsapp';
+import { useAppointments, useDeleteAppointment, useUpdateAppointmentStatus } from '@/lib/queries/appointments';
 
 const Agenda = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | undefined>();
+  const [selectedAppointment, setSelectedAppointment] = useState<any | undefined>();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
+  const [appointmentToDelete, setAppointmentToDelete] = useState<any | null>(null);
   
   const startWeek = startOfWeek(selectedDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startWeek, i));
 
-  useEffect(() => {
-    loadAppointments();
-  }, [selectedDate]);
+  const startDate = format(selectedDate, 'yyyy-MM-dd') + 'T00:00:00.000Z';
+  const endDate = format(selectedDate, 'yyyy-MM-dd') + 'T23:59:59.999Z';
+  const { data: appointments = [], isLoading: loading } = useAppointments({ startDate, endDate });
+  const deleteAppointment = useDeleteAppointment();
+  const updateStatus = useUpdateAppointmentStatus();
 
-  const loadAppointments = async () => {
-    try {
-      setLoading(true);
-      const startDate = format(selectedDate, 'yyyy-MM-dd') + 'T00:00:00.000Z';
-      const endDate = format(selectedDate, 'yyyy-MM-dd') + 'T23:59:59.999Z';
-      const data = await api.appointments.list({ startDate, endDate });
-      setAppointments(data.appointments || []);
-    } catch (error: any) {
-      toast.error('Erro ao carregar agendamentos');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEdit = (appointment: Appointment) => {
+  const handleEdit = (appointment: any) => {
     setSelectedAppointment(appointment);
     setDialogOpen(true);
   };
@@ -67,9 +37,8 @@ const Agenda = () => {
     if (!appointmentToDelete) return;
 
     try {
-      await api.appointments.delete(appointmentToDelete.id);
+      await deleteAppointment.mutateAsync(appointmentToDelete.id);
       toast.success('Agendamento excluído com sucesso!');
-      loadAppointments();
     } catch (error: any) {
       toast.error(error.message || 'Erro ao excluir agendamento');
     } finally {
@@ -80,9 +49,8 @@ const Agenda = () => {
 
   const handleStatusChange = async (appointmentId: string, newStatus: string) => {
     try {
-      await api.appointments.updateStatus(appointmentId, newStatus);
+      await updateStatus.mutateAsync({ id: appointmentId, status: newStatus as any });
       toast.success('Status atualizado!');
-      loadAppointments();
     } catch (error: any) {
       toast.error(error.message || 'Erro ao atualizar status');
     }
@@ -117,9 +85,9 @@ const Agenda = () => {
     }
 
     const message = getAppointmentMessage(
-      apt.client.name,
-      format(new Date(apt.startTime), "dd/MM/yyyy", { locale: ptBR }),
-      format(new Date(apt.startTime), "HH:mm", { locale: ptBR }),
+      apt.client?.name,
+      format(new Date((apt as any).start_time || (apt as any).startTime), "dd/MM/yyyy", { locale: ptBR }),
+      format(new Date((apt as any).start_time || (apt as any).startTime), "HH:mm", { locale: ptBR }),
       apt.service?.name || 'Serviço'
     );
 
@@ -210,7 +178,7 @@ const Agenda = () => {
                       <h3 className="font-semibold text-base">{apt.client?.name}</h3>
                       <p className="text-sm text-muted-foreground">{apt.service?.name}</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {format(new Date(apt.startTime), 'HH:mm')} - {format(new Date(apt.endTime), 'HH:mm')}
+                        {format(new Date((apt as any).start_time || (apt as any).startTime), 'HH:mm')} - {format(new Date((apt as any).end_time || (apt as any).endTime), 'HH:mm')}
                       </p>
                       {apt.notes && (
                         <p className="text-xs text-muted-foreground mt-2 italic">{apt.notes}</p>

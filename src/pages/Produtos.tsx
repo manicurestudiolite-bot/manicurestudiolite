@@ -1,42 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Package, Plus, Search, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ProductDialog } from '@/components/ProductDialog';
-import { Product } from '@/types';
-import { api } from '@/lib/api';
+import { useProducts, useAdjustStock } from '@/lib/queries/products';
 import { toast } from 'sonner';
 
 const Produtos = () => {
   const [search, setSearch] = useState('');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: products = [], isLoading: loading } = useProducts();
+  const adjustStock = useAdjustStock();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | undefined>();
-
-  useEffect(() => {
-    loadProducts();
-  }, []);
-
-  const loadProducts = async () => {
-    try {
-      setLoading(true);
-      const data = await api.products.list();
-      setProducts(data.products || []);
-    } catch (error: any) {
-      toast.error('Erro ao carregar produtos');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [selectedProduct, setSelectedProduct] = useState<any>();
 
   const handleAdjust = async (productId: string, delta: number) => {
     try {
-      await api.products.adjust(productId, { delta });
-      toast.success('Estoque atualizado!');
-      loadProducts();
+      await adjustStock.mutateAsync({ productId, delta });
     } catch (error: any) {
       toast.error('Erro ao ajustar estoque');
     }
@@ -78,7 +59,7 @@ const Produtos = () => {
                   <div className="flex-1">
                     <h3 className="font-semibold">{product.name}</h3>
                     <p className="text-sm text-muted-foreground">{product.brand} {product.color && `- ${product.color}`}</p>
-                    {product.qty <= product.lowStockLimit && <Badge variant="destructive" className="mt-1">Estoque baixo</Badge>}
+                    {product.qty <= product.low_stock_limit && <Badge variant="destructive" className="mt-1">Estoque baixo</Badge>}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button size="icon" variant="outline" onClick={() => handleAdjust(product.id, -1)} disabled={product.qty === 0}><Minus className="w-4 h-4" /></Button>
@@ -92,7 +73,7 @@ const Produtos = () => {
         </div>
       )}
 
-      <ProductDialog open={dialogOpen} onOpenChange={setDialogOpen} product={selectedProduct} onSave={loadProducts} />
+      <ProductDialog open={dialogOpen} onOpenChange={setDialogOpen} product={selectedProduct} onSave={() => setDialogOpen(false)} />
     </div>
   );
 };
