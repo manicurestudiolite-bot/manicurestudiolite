@@ -14,7 +14,393 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      appointments: {
+        Row: {
+          client_id: string
+          created_at: string
+          end_time: string
+          id: string
+          notes: string | null
+          paid_amount: number | null
+          price: number | null
+          service_id: string
+          start_time: string
+          status: Database["public"]["Enums"]["appointment_status"]
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          notes?: string | null
+          paid_amount?: number | null
+          price?: number | null
+          service_id: string
+          start_time: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          notes?: string | null
+          paid_amount?: number | null
+          price?: number | null
+          service_id?: string
+          start_time?: string
+          status?: Database["public"]["Enums"]["appointment_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          created_at: string
+          id: string
+          instagram: string | null
+          name: string
+          notes: string | null
+          phone: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instagram?: string | null
+          name: string
+          notes?: string | null
+          phone: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instagram?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          appointment_id: string
+          channel: string
+          created_at: string
+          id: string
+          payload: Json | null
+          scheduled_at: string | null
+          sent_at: string | null
+          type: string
+        }
+        Insert: {
+          appointment_id: string
+          channel: string
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          type: string
+        }
+        Update: {
+          appointment_id?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          brand: string | null
+          color: string | null
+          created_at: string
+          id: string
+          low_stock_limit: number
+          name: string
+          price_cents: number | null
+          qty: number
+          user_id: string
+        }
+        Insert: {
+          brand?: string | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          low_stock_limit?: number
+          name: string
+          price_cents?: number | null
+          qty?: number
+          user_id: string
+        }
+        Update: {
+          brand?: string | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          low_stock_limit?: number
+          name?: string
+          price_cents?: number | null
+          qty?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string | null
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id?: string | null
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_history: {
+        Row: {
+          client_id: string
+          created_at: string
+          date: string
+          id: string
+          price_cents: number
+          service_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          date: string
+          id?: string
+          price_cents: number
+          service_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          price_cents?: number
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_history_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      services: {
+        Row: {
+          color: string | null
+          created_at: string
+          duration_minutes: number
+          id: string
+          name: string
+          price_cents: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          duration_minutes: number
+          id?: string
+          name: string
+          price_cents: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          duration_minutes?: number
+          id?: string
+          name?: string
+          price_cents?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_moves: {
+        Row: {
+          created_at: string
+          delta: number
+          id: string
+          product_id: string
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          delta: number
+          id?: string
+          product_id: string
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          delta?: number
+          id?: string
+          product_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_moves_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_settings: {
+        Row: {
+          notif_1h: boolean
+          notif_24h: boolean
+          notif_3h: boolean
+          theme: Database["public"]["Enums"]["theme"]
+          user_id: string
+        }
+        Insert: {
+          notif_1h?: boolean
+          notif_24h?: boolean
+          notif_3h?: boolean
+          theme?: Database["public"]["Enums"]["theme"]
+          user_id: string
+        }
+        Update: {
+          notif_1h?: boolean
+          notif_24h?: boolean
+          notif_3h?: boolean
+          theme?: Database["public"]["Enums"]["theme"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +409,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      appointment_status:
+        | "PENDENTE"
+        | "PREPAGO"
+        | "CONCLUIDO"
+        | "CANCELADO"
+        | "FALTOU"
+      theme: "light" | "dark" | "system"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +542,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      appointment_status: [
+        "PENDENTE",
+        "PREPAGO",
+        "CONCLUIDO",
+        "CANCELADO",
+        "FALTOU",
+      ],
+      theme: ["light", "dark", "system"],
+    },
   },
 } as const
