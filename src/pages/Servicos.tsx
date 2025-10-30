@@ -1,13 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Briefcase, Plus, Search, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ServiceDialog } from '@/components/ServiceDialog';
-import { Service } from '@/types';
-import { api } from '@/lib/api';
-import { toast } from 'sonner';
+import { useServices, useDeleteService, Service } from '@/lib/queries/services';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,47 +19,30 @@ import {
 
 const Servicos = () => {
   const [search, setSearch] = useState('');
-  const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedService, setSelectedService] = useState<Service | undefined>();
+  const [selectedService, setSelectedService] = useState<any>();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
 
-  useEffect(() => {
-    loadServices();
-  }, []);
-
-  const loadServices = async () => {
-    try {
-      setLoading(true);
-      const data = await api.services.list();
-      setServices(data.services || []);
-    } catch (error: any) {
-      toast.error('Erro ao carregar serviços');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: services = [], isLoading: loading } = useServices();
+  const deleteService = useDeleteService();
 
   const handleEdit = (service: Service) => {
-    setSelectedService(service);
+    setSelectedService({
+      ...service,
+      priceCents: service.price_cents,
+      durationMinutes: service.duration_minutes,
+      createdAt: service.created_at,
+      updatedAt: service.updated_at,
+    });
     setDialogOpen(true);
   };
 
   const handleDelete = async () => {
     if (!serviceToDelete) return;
-
-    try {
-      await api.services.delete(serviceToDelete.id);
-      toast.success('Serviço excluído com sucesso!');
-      loadServices();
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao excluir serviço');
-    } finally {
-      setDeleteDialogOpen(false);
-      setServiceToDelete(null);
-    }
+    await deleteService.mutateAsync(serviceToDelete.id);
+    setDeleteDialogOpen(false);
+    setServiceToDelete(null);
   };
 
   const filteredServices = services.filter((service) =>
@@ -140,13 +121,13 @@ const Servicos = () => {
                         style={{ backgroundColor: service.color }}
                       />
                     )}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-base">{service.name}</h3>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        <Badge variant="secondary">{formatCurrency(service.priceCents)}</Badge>
-                        <Badge variant="outline">{service.durationMinutes} min</Badge>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-base">{service.name}</h3>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <Badge variant="secondary">{formatCurrency(service.price_cents)}</Badge>
+                          <Badge variant="outline">{service.duration_minutes} min</Badge>
+                        </div>
                       </div>
-                    </div>
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <Button size="icon" variant="ghost" onClick={() => handleEdit(service)}>
@@ -174,7 +155,7 @@ const Servicos = () => {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         service={selectedService}
-        onSave={loadServices}
+        onSave={() => setDialogOpen(false)}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

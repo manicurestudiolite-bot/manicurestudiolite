@@ -1,12 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Users, Plus, Search, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { ClientDialog } from '@/components/ClientDialog';
-import { Client } from '@/types';
-import { api } from '@/lib/api';
-import { toast } from 'sonner';
+import { useClients, useDeleteClient, Client } from '@/lib/queries/clients';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,47 +18,28 @@ import {
 
 const Clientes = () => {
   const [search, setSearch] = useState('');
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<Client | undefined>();
+  const [selectedClient, setSelectedClient] = useState<any>();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
 
-  useEffect(() => {
-    loadClients();
-  }, []);
-
-  const loadClients = async () => {
-    try {
-      setLoading(true);
-      const data = await api.clients.list();
-      setClients(data.clients || []);
-    } catch (error: any) {
-      toast.error('Erro ao carregar clientes');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: clients = [], isLoading: loading } = useClients();
+  const deleteClient = useDeleteClient();
 
   const handleEdit = (client: Client) => {
-    setSelectedClient(client);
+    // Convert to old Client type format for dialog compatibility
+    setSelectedClient({
+      ...client,
+      createdAt: client.created_at
+    } as any);
     setDialogOpen(true);
   };
 
   const handleDelete = async () => {
     if (!clientToDelete) return;
-
-    try {
-      await api.clients.delete(clientToDelete.id);
-      toast.success('Cliente excluído com sucesso!');
-      loadClients();
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao excluir cliente');
-    } finally {
-      setDeleteDialogOpen(false);
-      setClientToDelete(null);
-    }
+    await deleteClient.mutateAsync(clientToDelete.id);
+    setDeleteDialogOpen(false);
+    setClientToDelete(null);
   };
 
   const filteredClients = clients.filter((client) =>
@@ -172,7 +151,7 @@ const Clientes = () => {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         client={selectedClient}
-        onSave={loadClients}
+        onSave={() => setDialogOpen(false)}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
